@@ -1,0 +1,55 @@
+name: suri-house
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: .docker/nodejs/Dockerfile
+    container_name: suri-house
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    # Chỉ nội bộ, Traefik route qua network
+    expose:
+      - "${PORT}"
+    labels:
+      - "traefik.enable=true"
+      # suri.house (HTTP -> HTTPS redirect)
+      - "traefik.http.routers.suri-house-http.rule=Host(`suri.house`)"
+      - "traefik.http.routers.suri-house-http.entrypoints=web"
+      - "traefik.http.routers.suri-house-http.middlewares=suri-redirect-https"
+      - "traefik.http.routers.suri-house-http.service=nextjs-suri-house-service"
+      # suri.house (HTTPS)
+      - "traefik.http.routers.suri-house-https.rule=Host(`suri.house`)"
+      - "traefik.http.routers.suri-house-https.entrypoints=websecure"
+      - "traefik.http.routers.suri-house-https.tls=true"
+      - "traefik.http.routers.suri-house-https.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.suri-house-https.service=nextjs-suri-house-service"
+      # Service definition
+      - "traefik.http.services.nextjs-suri-house-service.loadbalancer.server.port=${PORT}"
+      # Middleware for HTTP to HTTPS redirect
+      - "traefik.http.middlewares.suri-redirect-https.redirectscheme.scheme=https"
+    networks:
+      - default
+      - traefikNetwork
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--tries=1",
+          "--spider",
+          "http://localhost:${PORT}",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  default:
+    external: true
+    name: docker-web_default
+  traefikNetwork:
+    external: true
+    name: traefikNetwork
