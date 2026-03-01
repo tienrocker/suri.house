@@ -13,6 +13,7 @@ services:
       - "${PORT}"
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefikNetwork"
       # suri.house (HTTP -> HTTPS redirect)
       - "traefik.http.routers.suri-house-http.rule=Host(`suri.house`)"
       - "traefik.http.routers.suri-house-http.entrypoints=web"
